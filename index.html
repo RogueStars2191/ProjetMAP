@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gondwa - Map Interactive</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #0b0c10; font-family: 'Montserrat', sans-serif;
+            color: #ffffff; overflow: hidden;
+        }
+
+        header {
+            height: 70px; background-color: #1f2833;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #45f3ff; box-sizing: border-box;
+            position: relative; z-index: 2000;
+        }
+
+        .logo-zone { display: flex; align-items: center; gap: 15px; }
+        .logo-zone img { height: 50px; width: auto; border-radius: 8px; }
+        .logo-zone h1 {
+            margin: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;
+            background: linear-gradient(to right, #ffffff, #45f3ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .menu-central {
+            display: flex; align-items: center; gap: 15px;
+        }
+
+        .nav-btn {
+            background-color: #1f2833; color: #45f3ff; border: 1px solid #45f3ff;
+            padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer;
+            font-family: 'Montserrat', sans-serif; font-size: 14px; transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-btn:hover {
+            background-color: #45f3ff; color: #1f2833; box-shadow: 0 0 15px rgba(69, 243, 255, 0.4);
+        }
+
+        /* BARRE DEROULANTE DES FILTRES */
+        .filter-dropdown-bar {
+            position: absolute; top: 70px; left: 0; width: 100%;
+            background-color: rgba(31, 40, 51, 0.95);
+            border-bottom: 2px solid #45f3ff; box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center; gap: 25px;
+            padding: 0; height: 0; overflow: hidden; opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1999;
+        }
+        .filter-dropdown-bar.open {
+            padding: 15px 0; height: auto; opacity: 1;
+        }
+
+        .filter-item {
+            display: flex; align-items: center; gap: 8px; font-size: 14px;
+            font-weight: 600; cursor: pointer; user-select: none;
+        }
+        .filter-item input[type="checkbox"] {
+            appearance: none; width: 16px; height: 16px; border: 2px solid #45f3ff;
+            border-radius: 4px; background-color: transparent; cursor: pointer;
+            display: grid; place-content: center; transition: 0.15s all ease-in-out;
+        }
+        .filter-item input[type="checkbox"]::before {
+            content: "✓"; font-size: 12px; color: #1f2833; transform: scale(0); transition: 0.15s transform ease-in-out;
+        }
+        .filter-item input[type="checkbox"]:checked { background-color: #45f3ff; }
+        .filter-item input[type="checkbox"]:checked::before { transform: scale(1); }
+
+        .links-zone a {
+            color: #ffffff; text-decoration: none; font-weight: bold; padding: 8px 16px;
+            border: 1px solid #ffffff; border-radius: 5px; transition: all 0.3s ease;
+        }
+        .links-zone a:hover { background-color: #ffffff; color: #1f2833; }
+
+        #map { width: 100%; height: calc(100vh - 70px); background-color: #000000; }
+        .leaflet-bar a { background-color: #1f2833 !important; color: #45f3ff !important; border-color: #45f3ff !important; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background-color: #1f2833; color: #ffffff; }
+
+        /* Style Punaises */
+        .pin-corbeau, .pin-taniere, .pin-cave, .pin-tp {
+            width: 32px !important; height: 32px !important;
+            border-radius: 50% 50% 50% 0 !important;
+            position: absolute; transform: rotate(-45deg);
+            transition: width 0.2s, height 0.2s;
+        }
+        .pin-corbeau img, .pin-taniere img, .pin-cave img, .pin-tp img {
+            width: 22px !important; height: 22px !important;
+            margin: 5px 0 0 5px !important; transform: rotate(45deg);
+            border-radius: 50%; object-fit: contain;
+        }
+
+        /* CONFIGURATION NOUVEAU FOND POUR LE CORBEAU (Fond Jaune, Néon Cyan) */
+        .pin-corbeau { 
+            background: #ffea00 !important; 
+            border: 2px solid #45f3ff !important; 
+            box-shadow: 0px 0px 8px #45f3ff; 
+        }
+        
+        /* Tanière (Reste inchangée : Fond bleu foncé, Néon Cyan) */
+        .pin-taniere { 
+            background: #1a237e !important; 
+            border: 2px solid #45f3ff !important; 
+            box-shadow: 0px 0px 8px #45f3ff; 
+        }
+        
+        .pin-cave { background: #4ba3e3 !important; border: 2px solid #d500f9 !important; box-shadow: 0px 0px 8px #d500f9; }
+        .pin-tp { background: #66bb6a !important; border: 2px solid #ffea00 !important; box-shadow: 0px 0px 8px #ffea00; }
+
+        .region-text {
+            color: #ffffff; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 2px;
+            white-space: nowrap; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            z-index: 400 !important;
+            transition: font-size 0.2s, opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-zone">
+            <img src="logo.jpg" alt="Logo" onerror="this.style.display='none'">
+            <h1>Gondwa Interactive Map</h1>
+        </div>
+        
+        <div class="menu-central">
+            <button class="nav-btn" onclick="toggleFilterBar()">
+                Filtres <span id="arrow-icon">▼</span>
+            </button>
+            <button class="nav-btn" onclick="refreshAllData()">
+                Actualiser ↻
+            </button>
+        </div>
+
+        <div class="links-zone">
+            <a href="https://twitch.tv/pierotstream" target="_blank">Twitch</a>
+        </div>
+    </header>
+
+    <div id="filterBar" class="filter-dropdown-bar">
+        <label class="filter-item"><input type="checkbox" id="chk-lieux" checked onchange="toggleLayer('lieux')"> 📌 Régions</label>
+        <label class="filter-item"><input type="checkbox" id="chk-corbeau" checked onchange="toggleLayer('corbeau')"> 🦅 Corbeaux</label>
+        <label class="filter-item"><input type="checkbox" id="chk-tanieres" checked onchange="toggleLayer('tanieres')"> 🪺 Tanières</label>
+        <label class="filter-item"><input type="checkbox" id="chk-cave" checked onchange="toggleLayer('cave')"> 🪨 Caves</label>
+        <label class="filter-item"><input type="checkbox" id="chk-tp" checked onchange="toggleLayer('tp')"> 🟢 Téléporteurs</label>
+        <label class="filter-item"><input type="checkbox" id="chk-itineraire" checked onchange="toggleLayer('itineraire')"> 🛣️ Itinéraires</label>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        var sheetId = "19CRJKajp9yiscjv2ul_b-iNNW_oCllSMmQDCb7QYVV4";
+        var w = 7745, h = 7745;
+
+        var map = L.map('map', { crs: L.CRS.Simple, minZoom: 9, maxZoom: 13 });
+        var southWest = map.unproject([0, h], 13);
+        var northEast = map.unproject([w, 0], 13);
+        var bounds = new L.LatLngBounds(southWest, northEast);
+        map.setMaxBounds(bounds);
+        
+        L.tileLayer('./tiles_files/{z}/{x}_{y}.jpeg', { bounds: bounds, noWrap: true, maxNativeZoom: 13 }).addTo(map);
+
+        var layers = {
+            lieux: L.layerGroup().addTo(map),
+            corbeau: L.layerGroup().addTo(map),
+            tanieres: L.layerGroup().addTo(map),
+            cave: L.layerGroup().addTo(map),
+            tp: L.layerGroup().addTo(map),
+            itineraire: L.layerGroup().addTo(map)
+        };
+
+        function toggleFilterBar() {
+            var bar = document.getElementById('filterBar');
+            var arrow = document.getElementById('arrow-icon');
+            bar.classList.toggle('open');
+            arrow.textContent = bar.classList.contains('open') ? "▲" : "▼";
+        }
+
+        function toggleLayer(type) {
+            var checkbox = document.getElementById('chk-' + type);
+            if (checkbox.checked) { 
+                map.addLayer(layers[type]); 
+                updateElementsSizes(); 
+            } else { 
+                map.removeLayer(layers[type]); 
+            }
+        }
+
+        function cleanCSVCell(cell) {
+            if (!cell) return "";
+            return cell.trim().replace(/^["']|["']$/g, '').trim();
+        }
+
+        function parseCSV(text) {
+            var lines = text.split('\n');
+            var result = [];
+            if(lines.length === 0) return result;
+            var headers = lines[0].split(',').map(cleanCSVCell);
+            
+            for(var i = 1; i < lines.length; i++) {
+                if(!lines[i].trim()) continue;
+                var currentline = lines[i].split(',');
+                var obj = {};
+                for(var j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = cleanCSVCell(currentline[j]);
+                }
+                result.push(obj);
+            }
+            return result;
+        }
+
+        function loadSheetData(onglet, typeMarker) {
+            var url = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:csv&sheet=" + onglet + "&t=" + new Date().getTime();
+            fetch(url)
+                .then(res => res.text())
+                .then(csvText => {
+                    var data = parseCSV(csvText);
+                    data.forEach(item => {
+                        var x = parseFloat(item.x);
+                        var y = parseFloat(item.y);
+                        if(isNaN(x) || isNaN(y)) return;
+
+                        var coord = map.unproject([x, y], 13);
+
+                        if (typeMarker === 'texte') {
+                            var textIcon = L.divIcon({
+                                className: 'region-text', 
+                                html: '<div style="text-align: center; width: 100%; white-space: nowrap;">' + item.Nom + '</div>', 
+                                iconSize: [200, 30], 
+                                iconAnchor: [100, 15] 
+                            });
+                            L.marker(coord, {icon: textIcon}).addTo(layers[onglet]);
+                        } else {
+                            var iconHtml = L.divIcon({
+                                className: '', html: '<div class="pin-' + typeMarker + '"><img src="./icons/' + onglet + '.png"></div>',
+                                iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
+                            });
+                            L.marker(coord, {icon: iconHtml}).addTo(layers[onglet]).bindPopup("<b>" + item.Nom + "</b>");
+                        }
+                    });
+                    updateElementsSizes();
+                }).catch(err => console.error("Erreur onglet " + onglet, err));
+        }
+
+        function loadItineraires() {
+            var url = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:csv&sheet=itineraire&t=" + new Date().getTime();
+            fetch(url)
+                .then(res => res.text())
+                .then(csvText => {
+                    var data = parseCSV(csvText);
+                    var groupesRoutes = {};
+
+                    data.forEach(item => {
+                        var x = parseFloat(item.x);
+                        var y = parseFloat(item.y);
+                        if(isNaN(x) || isNaN(y) || !item.Nom) return;
+
+                        if(!groupesRoutes[item.Nom]) {
+                            groupesRoutes[item.Nom] = { points: [], couleur: item.Couleur || '#ffcc00' };
+                        }
+                        groupesRoutes[item.Nom].points.push(map.unproject([x, y], 13));
+                    });
+
+                    for (var nomRoute in groupesRoutes) {
+                        var route = groupesRoutes[nomRoute];
+                        if(route.points.length < 2) continue;
+
+                        L.polyline(route.points, {
+                            color: route.couleur, weight: 4, opacity: 0.8, dashArray: '8, 8', lineJoin: 'round'
+                        }).addTo(layers.itineraire).bindPopup("<b>" + nomRoute + "</b><br>Itinéraire de récolte.");
+                    }
+                });
+        }
+
+        function refreshAllData() {
+            for (var key in layers) { layers[key].clearLayers(); }
+            loadSheetData('lieux', 'texte');
+            loadSheetData('corbeau', 'corbeau');
+            loadSheetData('tanieres', 'taniere');
+            loadSheetData('cave', 'cave');
+            loadSheetData('tp', 'tp');
+            loadItineraires();
+        }
+
+        loadSheetData('lieux', 'texte');
+        loadSheetData('corbeau', 'corbeau');
+        loadSheetData('tanieres', 'taniere');
+        loadSheetData('cave', 'cave');
+        loadSheetData('tp', 'tp');
+        loadItineraires();
+
+        var popup = L.popup();
+        map.on('click', function(e) {
+            var point = map.project(e.latlng, 13);
+            popup.setLatLng(e.latlng).setContent("<b>Coordonnées :</b><br>X : " + Math.round(point.x) + "<br>Y : " + Math.round(point.y)).openOn(map);
+        });
+
+        function updateElementsSizes() {
+            var currentZoom = map.getZoom();
+            var textFormat = 16;
+            var textOpacity = 1;
+            
+            if (currentZoom <= 10) { 
+                textFormat = 8;   
+                textOpacity = 0.4; 
+            } else if (currentZoom === 11) { 
+                textFormat = 11;  
+                textOpacity = 1;   
+            }
+            
+            document.querySelectorAll('.region-text').forEach(function(reg) { 
+                reg.style.fontSize = textFormat + 'px'; 
+                reg.style.opacity = textOpacity; 
+            });
+
+            var newSize = 32;
+            if (currentZoom <= 10) { newSize = 16; } else if (currentZoom === 11) { newSize = 24; }
+            
+            ['.pin-corbeau', '.pin-taniere', '.pin-cave', '.pin-tp'].forEach(function(cls) {
+                document.querySelectorAll(cls).forEach(function(el) {
+                    el.style.width = newSize + 'px'; el.style.height = newSize + 'px';
+                    var img = el.querySelector('img');
+                    if (img) { img.style.width = (newSize - 10) + 'px'; img.style.height = (newSize - 10) + 'px'; }
+                });
+            });
+        }
+
+        map.on('zoomend', updateElementsSizes);
+        setTimeout(function() { map.invalidateSize(); map.fitBounds(bounds); updateElementsSizes(); }, 150);
+    </script>
+</body>
+</html>
