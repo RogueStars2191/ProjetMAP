@@ -119,6 +119,46 @@
             z-index: 400 !important;
             transition: font-size 0.2s, opacity 0.3s ease-in-out;
         }
+
+        /* ==========================================================================
+           AJUSTEMENTS EXCLUSIFS POUR LES ÉCRANS MOBILES (Max 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            header {
+                height: auto;
+                padding: 10px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .logo-zone h1 {
+                font-size: 16px;
+            }
+            .logo-zone img {
+                height: 35px;
+            }
+            .nav-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            .links-zone {
+                display: none; /* Cache le bouton Twitch sur mobile pour gagner de la place */
+            }
+            .filter-dropdown-bar {
+                top: 110px; /* Aligne la barre sous le header mobile plus épais */
+                flex-wrap: wrap; /* Permet aux filtres de passer à la ligne proprement */
+                gap: 12px 15px;
+                padding: 0 10px;
+            }
+            .filter-dropdown-bar.open {
+                padding: 12px 10px;
+            }
+            .filter-item {
+                font-size: 12px;
+            }
+            #map {
+                height: calc(100vh - 110px); /* Ajuste la carte par rapport au header mobile */
+            }
+        }
     </style>
 </head>
 <body>
